@@ -32,6 +32,9 @@ ui-debug.log*
 database-debug.log*
 pubsub-debug.log*
 
+# Claude Code
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -47,6 +47,7 @@ export interface SavingsGoal {
   name: string;
   targetAmount: number;
   currentAmount: number;
+  monthlyContribution: number | null;
   isCompleted: boolean;
   createdAt: Date;
   updatedAt: Date;

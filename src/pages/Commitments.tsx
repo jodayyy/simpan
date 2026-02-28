@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useCommitmentStore } from '@/store/commitmentStore';
+import { useUserProfileStore } from '@/store/userProfileStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,12 +23,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Info, Receipt } from 'lucide-react';
 import type { Commitment, CommitmentCategory } from '@/types';
 import { CATEGORY_CONFIG, CATEGORY_ORDER, getCategoryBadgeClass } from '@/lib/categories';
+import { CategoryBar, getCategoryTotals } from '@/components/CategoryBar';
 
 export default function Commitments() {
   const { commitments, togglePaid, deleteCommitment } = useCommitmentStore();
+  const salary = useUserProfileStore((state) => state.profile?.salary ?? null);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingCommitment, setEditingCommitment] = useState<Commitment | null>(null);
@@ -50,20 +53,15 @@ export default function Commitments() {
     }
   };
 
-  const paidCount = commitments.filter((c) => c.isPaid).length;
-
-  const currentMonth = new Date().toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
-  const remainingCount = commitments.length - paidCount;
-  const remainingAmount = commitments.filter((c) => !c.isPaid).reduce((sum, c) => sum + c.amount, 0);
+  const totalAmount = commitments.reduce((sum, c) => sum + c.amount, 0);
+  const paidAmount = commitments.filter((c) => c.isPaid).reduce((sum, c) => sum + c.amount, 0);
+  const paidPercent = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold">Monthly Commitments</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            {currentMonth} • {paidCount} paid, {remainingCount} remaining (RM{remainingAmount.toFixed(2)})
-          </p>
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
@@ -81,6 +79,80 @@ export default function Commitments() {
         </Dialog>
       </div>
 
+      {commitments.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Commitments</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xl sm:text-2xl font-bold">RM{totalAmount.toFixed(2)}</p>
+              <div className="space-y-1">
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full bg-primary transition-all"
+                    style={{ width: `${paidPercent}%` }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">{paidPercent.toFixed(0)}% paid</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader >
+              <div className="flex items-center justify-between">
+                <CardTitle>Categories</CardTitle>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="size-4 -mr-1">
+                      <Info className="size-3.5 text-muted-foreground" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Categories</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      {getCategoryTotals(commitments).map(({ category, amount, percentage }) => {
+                        const config = CATEGORY_CONFIG[category];
+                        const Icon = config.icon;
+                        return (
+                          <div key={category} className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-sm shrink-0 ${config.progressColor}`} />
+                            <div className={`p-1 rounded ${config.bgColor} ${config.darkBgColor}`}>
+                              <Icon className={`size-3.5 ${config.textColor} ${config.darkTextColor}`} />
+                            </div>
+                            <span className="flex-1 text-sm">{config.label}</span>
+                            <span className="text-sm font-medium">RM{amount.toFixed(2)}</span>
+                            <span className="text-sm text-muted-foreground w-10 text-right">{percentage.toFixed(0)}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {salary !== null && (
+                <p className="text-xl sm:text-2xl font-bold">
+                  {((totalAmount / salary) * 100).toFixed(0)}% of salary
+                </p>
+              )}
+              <div className="space-y-1">
+                <CategoryBar commitments={commitments} />
+                {salary !== null && (
+                  <p className="text-sm text-muted-foreground">
+                    RM{(salary - totalAmount).toFixed(2)} left
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Commitments List */}
       <Card>
         <CardHeader>
@@ -88,23 +160,32 @@ export default function Commitments() {
         </CardHeader>
         <CardContent>
           {commitments.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-12 space-y-2">
+              <Receipt className="size-10 mx-auto text-muted-foreground/40" />
               <p className="text-muted-foreground">
                 No commitments yet. Click "Add Commitment" to get started.
               </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {commitments.map((commitment) => (
+              {commitments.map((commitment) => {
+                const categoryConfig = CATEGORY_CONFIG[commitment.category];
+                const CategoryIcon = categoryConfig.icon;
+                return (
                 <div
                   key={commitment.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 border rounded-lg hover:bg-accent/50 transition-colors ${
+                    commitment.isPaid ? 'opacity-60' : ''
+                  }`}
                 >
                   <div className="flex-1 space-y-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-sm sm:text-base truncate">{commitment.name}</h3>
+                      <h3 className={`font-semibold text-sm sm:text-base truncate ${commitment.isPaid ? 'line-through' : ''}`}>
+                        {commitment.name}
+                      </h3>
                       <Badge className={getCategoryBadgeClass(commitment.category)}>
-                        {CATEGORY_CONFIG[commitment.category].label}
+                        <CategoryIcon className="size-3 mr-1" />
+                        {categoryConfig.label}
                       </Badge>
                       {commitment.isPaid && (
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
@@ -169,7 +250,8 @@ export default function Commitments() {
                     </Button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </CardContent>

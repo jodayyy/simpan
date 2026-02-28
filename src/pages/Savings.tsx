@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { addMonths, format } from 'date-fns';
 import { useAuthStore } from '@/store/authStore';
 import { useSavingsStore } from '@/store/savingsStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, DollarSign, Target } from 'lucide-react';
+import { Plus, Pencil, Trash2, DollarSign, Target, Info, PiggyBank } from 'lucide-react';
 import type { SavingsGoal } from '@/types';
 
 export default function Savings() {
@@ -35,16 +36,19 @@ export default function Savings() {
     }
   };
 
+  const totalSaved = goals.reduce((sum, g) => sum + g.currentAmount, 0);
+  const totalTarget = goals.reduce((sum, g) => sum + g.targetAmount, 0);
+  const savedPercent = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+
+  const incompleteGoals = goals.filter((g) => !g.isCompleted);
+  const totalRemaining = incompleteGoals.reduce((sum, g) => sum + (g.targetAmount - g.currentAmount), 0);
+  const remainingPercent = totalTarget > 0 ? (totalRemaining / totalTarget) * 100 : 0;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold">Savings Goals</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            {goals.length > 0
-              ? `${goals.length} goal${goals.length !== 1 ? 's' : ''} tracked`
-              : 'Create your first savings goal to start building your future'}
-          </p>
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
@@ -59,6 +63,80 @@ export default function Savings() {
         </Dialog>
       </div>
 
+      {goals.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Saved</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xl sm:text-2xl font-bold">
+                RM{totalSaved.toFixed(2)}{' '}
+                <span className="text-sm sm:text-base font-normal text-muted-foreground">
+                  of RM{totalTarget.toFixed(2)}
+                </span>
+              </p>
+              <div className="space-y-1">
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full bg-primary transition-all"
+                    style={{ width: `${Math.min(savedPercent, 100)}%` }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">{savedPercent.toFixed(0)}% saved</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Remaining to Save</CardTitle>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="size-4 -mr-1">
+                      <Info className="size-3.5 text-muted-foreground" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Remaining by Goal</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      {incompleteGoals.map((goal) => {
+                        const remaining = goal.targetAmount - goal.currentAmount;
+                        const progress = (goal.currentAmount / goal.targetAmount) * 100;
+                        return (
+                          <div key={goal.id} className="flex items-center gap-3">
+                            <span className="flex-1 text-sm truncate">{goal.name}</span>
+                            <span className="text-sm font-medium">RM{remaining.toFixed(2)}</span>
+                            <span className="text-sm text-muted-foreground w-10 text-right">{progress.toFixed(0)}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xl sm:text-2xl font-bold">RM{totalRemaining.toFixed(2)}</p>
+              <div className="space-y-1">
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full bg-primary transition-all"
+                    style={{ width: `${Math.min(remainingPercent, 100)}%` }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {incompleteGoals.length} active goal{incompleteGoals.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Goals List */}
       <Card>
         <CardHeader>
@@ -66,7 +144,8 @@ export default function Savings() {
         </CardHeader>
         <CardContent>
           {goals.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-12 space-y-2">
+              <PiggyBank className="size-10 mx-auto text-muted-foreground/40" />
               <p className="text-muted-foreground">
                 No savings goals yet. Click "Add Goal" to get started.
               </p>
@@ -75,10 +154,23 @@ export default function Savings() {
             <div className="space-y-4">
               {goals.map((goal) => {
                 const progress = (goal.currentAmount / goal.targetAmount) * 100;
+                const remaining = goal.targetAmount - goal.currentAmount;
+                const nearlyDone = !goal.isCompleted && progress >= 80;
+                const monthsLeft =
+                  goal.monthlyContribution && goal.monthlyContribution > 0 && !goal.isCompleted
+                    ? Math.ceil(remaining / goal.monthlyContribution)
+                    : null;
+                const completionDate = monthsLeft !== null
+                  ? format(addMonths(new Date(), monthsLeft), 'MMM yyyy')
+                  : null;
                 return (
                   <div
                     key={goal.id}
-                    className="p-3 sm:p-4 border rounded-lg hover:bg-accent/50 transition-colors space-y-3"
+                    className={`p-3 sm:p-4 border rounded-lg transition-colors space-y-3 ${
+                      goal.isCompleted
+                        ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/30'
+                        : 'hover:bg-accent/50'
+                    }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                       <div className="flex-1 space-y-2 min-w-0">
@@ -90,11 +182,15 @@ export default function Savings() {
                               Completed
                             </Badge>
                           )}
+                          {nearlyDone && (
+                            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full shrink-0">
+                              RM{remaining.toFixed(2)} to go!
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm">
                           <div className="flex items-center gap-1">
-                            <DollarSign className="size-3 sm:size-4 text-muted-foreground shrink-0" />
                             <span className="font-semibold">RM{goal.currentAmount.toFixed(2)}</span>
                             <span className="text-muted-foreground shrink-0">/ RM{goal.targetAmount.toFixed(2)}</span>
                           </div>
@@ -104,16 +200,24 @@ export default function Savings() {
                         </div>
 
                         {/* Progress Bar */}
-                        <div className="w-full bg-secondary rounded-full h-2.5">
+                        <div className="w-full bg-secondary rounded-full h-2">
                           <div
-                            className={`h-2.5 rounded-full transition-all ${
-                              goal.isCompleted
-                                ? 'bg-green-500'
-                                : 'bg-primary'
+                            className={`h-2 rounded-full transition-all ${
+                              goal.isCompleted ? 'bg-green-500' : 'bg-primary'
                             }`}
                             style={{ width: `${Math.min(progress, 100)}%` }}
                           />
                         </div>
+
+                        {monthsLeft !== null && (
+                          <p className="text-xs text-muted-foreground">
+                            At RM{goal.monthlyContribution!.toFixed(2)}/month —{' '}
+                            <span className="font-medium text-foreground">
+                              done by {completionDate}
+                            </span>{' '}
+                            (~{monthsLeft} month{monthsLeft !== 1 ? 's' : ''})
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
@@ -197,6 +301,9 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
 
   const [name, setName] = useState(goal?.name || '');
   const [targetAmount, setTargetAmount] = useState(goal?.targetAmount.toString() || '');
+  const [monthlyContribution, setMonthlyContribution] = useState(
+    goal?.monthlyContribution?.toString() || ''
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -223,19 +330,23 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
     setLoading(true);
 
     try {
+      const parsedContribution = monthlyContribution ? parseFloat(monthlyContribution) : null;
+      const contribution =
+        parsedContribution !== null && parsedContribution > 0 ? parsedContribution : null;
+
       if (goal) {
-        // Update existing goal
         await updateGoal(goal.id, {
           name: name.trim(),
           targetAmount: parsedTarget,
+          monthlyContribution: contribution,
         });
       } else {
-        // Add new goal
         await addGoal({
           userId: user.uid,
           name: name.trim(),
           targetAmount: parsedTarget,
           currentAmount: 0,
+          monthlyContribution: contribution,
           isCompleted: false,
         });
       }
@@ -279,6 +390,23 @@ function GoalForm({ goal, onSuccess, onCancel }: GoalFormProps) {
               placeholder="0.00"
               value={targetAmount}
               onChange={(e) => setTargetAmount(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="monthlyContribution">
+              Monthly Contribution (RM){' '}
+              <span className="text-muted-foreground font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="monthlyContribution"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={monthlyContribution}
+              onChange={(e) => setMonthlyContribution(e.target.value)}
               disabled={loading}
             />
           </div>

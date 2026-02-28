@@ -1,22 +1,37 @@
 import { useCommitmentStore } from '@/store/commitmentStore';
 import { useSavingsStore } from '@/store/savingsStore';
+import { useUserProfileStore } from '@/store/userProfileStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Target } from 'lucide-react';
+import { Check, Target, Receipt, PiggyBank } from 'lucide-react';
+import { CategoryBar } from '@/components/CategoryBar';
+import { CATEGORY_CONFIG } from '@/lib/categories';
 
 export default function Dashboard() {
   const { commitments } = useCommitmentStore();
   const { goals } = useSavingsStore();
+  const salary = useUserProfileStore((state) => state.profile?.salary ?? null);
+  const username = useUserProfileStore((state) => state.profile?.username ?? null);
 
-  // Calculate commitment stats
-  const paidCount = commitments.filter((c) => c.isPaid).length;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-  // Calculate savings stats
+  // Commitments stats
+  const totalAmount = commitments.reduce((sum, c) => sum + c.amount, 0);
+  const paidAmount = commitments.filter((c) => c.isPaid).reduce((sum, c) => sum + c.amount, 0);
+  const paidPercent = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
+
+  // Savings stats
   const totalSaved = goals.reduce((sum, g) => sum + g.currentAmount, 0);
-  const completedGoals = goals.filter((g) => g.isCompleted).length;
-  const activeGoals = goals.length - completedGoals;
+  const totalTarget = goals.reduce((sum, g) => sum + g.targetAmount, 0);
+  const savedPercent = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+  const incompleteGoals = goals.filter((g) => !g.isCompleted);
+  const totalRemaining = incompleteGoals.reduce(
+    (sum, g) => sum + (g.targetAmount - g.currentAmount),
+    0
+  );
 
-  // Get recent commitments (up to 5, unpaid first)
+  // Lists
   const recentCommitments = [...commitments]
     .sort((a, b) => {
       if (a.isPaid === b.isPaid) return 0;
@@ -24,67 +39,152 @@ export default function Dashboard() {
     })
     .slice(0, 5);
 
-  // Get recent goals (up to 5, incomplete first, sorted by progress)
   const recentGoals = [...goals]
     .sort((a, b) => {
       if (a.isCompleted === b.isCompleted) {
-        const progressA = a.currentAmount / a.targetAmount;
-        const progressB = b.currentAmount / b.targetAmount;
-        return progressB - progressA;
+        return b.currentAmount / b.targetAmount - a.currentAmount / a.targetAmount;
       }
       return a.isCompleted ? 1 : -1;
     })
     .slice(0, 5);
 
-  const unpaidCount = commitments.length - paidCount;
-
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h2 className="text-2xl sm:text-3xl font-bold">Dashboard</h2>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          {unpaidCount > 0
-            ? `You have ${unpaidCount} unpaid commitment${unpaidCount > 1 ? 's' : ''} and ${activeGoals} active savings goal${activeGoals !== 1 ? 's' : ''}`
-            : commitments.length > 0
-            ? `All commitments paid! • RM${totalSaved.toFixed(2)} saved across ${goals.length} goal${goals.length !== 1 ? 's' : ''}`
-            : `No commitments yet • RM${totalSaved.toFixed(2)} saved across ${goals.length} goal${goals.length !== 1 ? 's' : ''}`}
+        <p className="text-sm text-muted-foreground">
+          {greeting}{username ? `, ${username}` : ''}
         </p>
+        <h2 className="text-2xl sm:text-3xl font-bold">Dashboard</h2>
       </div>
 
+      {/* Stat Cards */}
       <div className="grid lg:grid-cols-2 gap-4">
-        {/* Monthly Commitments */}
         <Card>
           <CardHeader>
             <CardTitle>Monthly Commitments</CardTitle>
           </CardHeader>
+          <CardContent className="space-y-3">
+            {commitments.length === 0 ? (
+              <div className="text-center py-6 space-y-2">
+                <Receipt className="size-8 mx-auto text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No commitments yet.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xl sm:text-2xl font-bold">RM{totalAmount.toFixed(2)}</p>
+                <div className="space-y-1">
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div
+                      className="h-2 rounded-full bg-primary transition-all"
+                      style={{ width: `${paidPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">{paidPercent.toFixed(0)}% paid</p>
+                </div>
+                <div className="space-y-1">
+                  <CategoryBar commitments={commitments} />
+                  {salary !== null && (
+                    <p className="text-sm text-muted-foreground">
+                      RM{(salary - totalAmount).toFixed(2)} left of salary
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Savings Goals</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {goals.length === 0 ? (
+              <div className="text-center py-6 space-y-2">
+                <PiggyBank className="size-8 mx-auto text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No savings goals yet.</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-xl sm:text-2xl font-bold">RM{totalSaved.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">saved</p>
+                  </div>
+                  <div className="border-l pl-4">
+                    <p className="text-xl sm:text-2xl font-bold">RM{totalRemaining.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">remaining</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div
+                      className="h-2 rounded-full bg-primary transition-all"
+                      style={{ width: `${Math.min(savedPercent, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {incompleteGoals.length} active goal{incompleteGoals.length !== 1 ? 's' : ''} ·{' '}
+                    {savedPercent.toFixed(0)}% saved
+                  </p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Lists */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Commitments</CardTitle>
+          </CardHeader>
           <CardContent>
             {recentCommitments.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No commitments yet. Start adding your monthly expenses.
-              </p>
+              <div className="text-center py-10 space-y-2">
+                <Receipt className="size-10 mx-auto text-muted-foreground/40" />
+                <p className="text-muted-foreground text-sm">
+                  No commitments yet. Start adding your monthly expenses.
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
-                {recentCommitments.map((commitment) => (
-                  <div
-                    key={commitment.id}
-                    className="flex items-center justify-between p-2 sm:p-3 border rounded-lg"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium text-sm sm:text-base truncate">{commitment.name}</h4>
-                        {commitment.isPaid && (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 shrink-0">
-                            <Check className="size-3 mr-1" />
-                            Paid
-                          </Badge>
-                        )}
+                {recentCommitments.map((commitment) => {
+                  const config = CATEGORY_CONFIG[commitment.category];
+                  return (
+                    <div
+                      key={commitment.id}
+                      className={`flex items-center justify-between p-2 sm:p-3 border rounded-lg transition-opacity ${
+                        commitment.isPaid ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${config.progressColor}`} />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4
+                              className={`font-medium text-sm sm:text-base truncate ${
+                                commitment.isPaid ? 'line-through' : ''
+                              }`}
+                            >
+                              {commitment.name}
+                            </h4>
+                            {commitment.isPaid && (
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 shrink-0">
+                                <Check className="size-3 mr-1" />
+                                Paid
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
+                            RM{commitment.amount.toFixed(2)}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs sm:text-sm text-muted-foreground">
-                        RM{commitment.amount.toFixed(2)}
-                      </p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {commitments.length > 5 && (
                   <p className="text-xs text-center text-muted-foreground pt-2">
                     Showing 5 of {commitments.length} commitments
@@ -95,16 +195,18 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Savings Goals */}
         <Card>
           <CardHeader>
-            <CardTitle>Savings Goals</CardTitle>
+            <CardTitle>Recent Goals</CardTitle>
           </CardHeader>
           <CardContent>
             {recentGoals.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No savings goals yet. Create your first goal.
-              </p>
+              <div className="text-center py-10 space-y-2">
+                <PiggyBank className="size-10 mx-auto text-muted-foreground/40" />
+                <p className="text-muted-foreground text-sm">
+                  No savings goals yet. Create your first goal.
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {recentGoals.map((goal) => {
@@ -126,7 +228,9 @@ export default function Dashboard() {
                             RM{goal.currentAmount.toFixed(2)} / RM{goal.targetAmount.toFixed(2)}
                           </p>
                         </div>
-                        <div className="text-xs sm:text-sm font-semibold shrink-0">{progress.toFixed(0)}%</div>
+                        <div className="text-xs sm:text-sm font-semibold shrink-0">
+                          {progress.toFixed(0)}%
+                        </div>
                       </div>
                       <div className="w-full bg-secondary rounded-full h-2">
                         <div

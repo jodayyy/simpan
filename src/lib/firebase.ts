@@ -3,13 +3,13 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAhQywKgSnHTZ136arR9Flkt3P92RC1itI",
-  authDomain: "sunsent-simpan.firebaseapp.com",
-  projectId: "sunsent-simpan",
-  storageBucket: "sunsent-simpan.firebasestorage.app",
-  messagingSenderId: "121761941508",
-  appId: "1:121761941508:web:030f53b60946be26a40d51",
-  measurementId: "G-JG0JY4P68F"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase

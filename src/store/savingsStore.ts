@@ -86,6 +86,7 @@ export function subscribeToSavings(userId: string, callback: (goals: SavingsGoal
           name: data.name,
           targetAmount: data.targetAmount,
           currentAmount: data.currentAmount,
+          monthlyContribution: data.monthlyContribution ?? null,
           isCompleted: data.isCompleted,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
