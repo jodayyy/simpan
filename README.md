@@ -1,73 +1,89 @@
-# React + TypeScript + Vite
+# Simpan
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web application to manage monthly financial commitments and savings goals.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Simpan helps users track their monthly financial obligations and monitor progress toward savings goals. The application provides a clean dashboard view with detailed management pages for both commitments and savings.
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Authentication & Profile
+- Email/password authentication with Firebase
+- User profile with editable username and monthly salary
+- Password change functionality
 
-## Expanding the ESLint configuration
+### Monthly Commitments
+- Track recurring monthly expenses (rent, utilities, subscriptions, etc.)
+- Mark payments as paid/unpaid
+- Automatic monthly reset on the 1st
+- Categorize with predefined categories
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Savings Goals
+- Set target-based savings goals
+- Track progress with visual indicators
+- Add contributions over time
+- Mark goals as completed when target is reached
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Dashboard
+- Overview of recent commitments and savings goals
+- Shows up to 5 unpaid-first commitments and top savings goals by progress
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Application Structure
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+**Pages:**
+1. Dashboard - Summary view of all data
+2. Commitments - Manage monthly expenses
+3. Savings - Manage savings goals
+4. Profile - Edit username and password
+
+**Navigation:**
+- Desktop: Collapsible sidebar with top bar
+- Mobile: Bottom navigation bar
+
+## Data Models
+
+**User Profile:**
+- Email, Username, Monthly take-home salary, Created/Updated timestamps
+
+**Commitment:**
+- Name, Amount, Category, Payment status, User ID
+
+**Savings Goal:**
+- Name, Target amount, Current amount, Completion status, User ID
+
+## Tech Stack
+
+**Frontend:**
+- React 19 + TypeScript
+- Vite 7
+- Tailwind CSS v4 + shadcn/ui (Radix UI)
+- React Router 7
+- Zustand 5
+- Framer Motion (page transitions)
+- React Hook Form + Zod
+
+**Backend:**
+- Firebase 12 (Authentication + Firestore)
+
+## Getting Started
+
+### Prerequisites
+- Node.js 16+
+- npm
+
+### Installation
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The application will open at `http://localhost:5173`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Available Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- `npm run dev` - Development server
+- `npm run build` - Production build
+- `npm run preview` - Preview production build
+- `npm run lint` - Run linter

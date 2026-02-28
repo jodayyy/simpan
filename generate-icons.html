@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate App Icons</title>
+</head>
+<body>
+  <h2>Generate Icons for Simpan PWA</h2>
+  <p>Click the buttons below to download each icon size:</p>
+  <button onclick="generateIcon(152)">Download 152x152</button>
+  <button onclick="generateIcon(167)">Download 167x167</button>
+  <button onclick="generateIcon(180)">Download 180x180</button>
+  <button onclick="generateIcon(192)">Download 192x192</button>
+  <button onclick="generateIcon(512)">Download 512x512</button>
+
+  <script>
+    function generateIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, size, size);
+
+      // Text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${size * 0.3}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('S', size / 2, size / 2);
+
+      // Download
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `icon-${size}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+  </script>
+</body>
+</html>
